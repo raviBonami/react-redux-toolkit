@@ -1,0 +1,124 @@
+
+* In store.js -
+1. Import configureStore - 
+import { configureStore } from "@reduxjs/toolkit";
+
+2. Import all the reducers from their respective files
+import cakeReducer from '../features/cake/cakeSlice'
+import icecreamReducer from '../features/icecream/icecreamSlice'
+
+3. Create store using configureStore - 
+This configureStore takes an object as an argument, in this object we can pass
+reducer as key and all different reducers as value in another object
+const store = configureStore({
+    reducer:{
+        cake: cakeReducer,
+        icecream: icecreamReducer,
+        user: userReducer
+    }
+})
+
+4. Export the store - 
+export default store 
+
+////////////////////////////////////////////////////////////////////
+
+* In Slice file of a state ( ice cream, cake, user ) - 
+1. Import createSlice from @reduxjs/toolkit
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
+
+2. Initialise the initialState - 
+const initialState = {
+    numOfCakes : 40
+}
+
+3. Create the reducer function using createSlice - createSlice takes an object as parameter
+and inside it we can define few key things like name, initial state and reducer functions
+Also, since it uses immer under the hood, so it doesn't need to copy the object using spread operator
+we can simply only update the properties we want to update 
+Inside reducers, we can pass all the action types for which we want to make some changes in the state
+
+The reducers present inside reducers take a function as a value , this function takes state and action as arguments
+so depending on the change we can update whichever property we want to update as all properties are accessible through
+state and if some parameters are to be passed they can be accessed via action 
+const cakeSlice = createSlice({
+    name : 'cake',
+    initialState: initialState,
+    reducers: {
+        buyCake: (state, action) => {
+            state.numOfCakes = state.numOfCakes - 10
+        },
+
+        restockCake: (state,action) => {
+            state.numOfCakes = state.numOfCakes + action.payload
+        },
+
+        extraReducers : (builder) => {
+        builder.addCase(cakeOrdered, (state,action) => {
+            state.numOfIcecreams--
+        })
+    }
+    }
+})
+
+
+Export the reducer function as default
+export default cakeSlice.reducer
+
+Also, export the action types 
+export const {buyCake,restockCake} = cakeSlice.actions
+
+In pre-toolkit type, a action type is received by all reducers, and only the reducer for which it is intended to
+takes action, but in toolkit type execution, only the reducer for which the action was intended for will receive it 
+so if we want some action which affects state of two reducers ( for ex: get one cake free for buying one ice-cream), 
+we need extraReducers
+extraReducers are special reducer function which also has a function as a value and this function takes builder as its argument 
+This builder is a special function that has a property addCase using which we can add that extra action (which belongs to some 
+reducer) 
+This addCase takes 2 arguments, first the action , second argument is a function which takes state and action as argument and 
+similar to other reducer function can update the property belonging to other reducers function 
+The reducers property both creates an action creator function and responds to that action in the slice reducer. 
+The extraReducers allows you to respond to an action in your slice reducer but does not create an action creator function.
+
+NOTE - Remember to import this action type from the Slice file for that state ( ice cream here )
+import {ordered as cakeOrdered} from '../cake/cakeSlice'
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+* In View file of the state - 
+Import the useSelector ( for access properties of slices (cake, ice cream)), useDispatch (to dispatch actions)
+Also import the action types from Slice file 
+
+Create a function and export it as default 
+Use useSelector to get the properties of state - This useSelector takes a function as an argument and this function 
+itself gets state as argument, using this state value we can edit the property and return that edited state value 
+
+Use useDispatch() to dispatch the action type, so if a button click has to dispatch an action, on onClick event, we can pass 
+a function which returns a dispatch function which takes the action as argument.
+Inside action type, we can pass any payload that we want to dispatch with action
+
+import React from 'react'
+import {useSelector, useDispatch} from 'react-redux'
+import { ordered, restocked } from './cakeSlice'
+
+export const CakeView = () => {
+   const numOfCakes =  useSelector((state) => state.cake.numOfCakes)
+   const dispatch = useDispatch()
+  return (
+    <div>
+        <h2>Number of cakes : {numOfCakes}</h2>
+        <button onClick={() => dispatch(ordered())} >Order cake</button>
+        <button onClick={() => dispatch(restocked(5))} >Restock cakes</button>
+    </div>
+  )
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+* In App js file - 
+Simply import the View file of all states, and use them 
+import {CakeView} from './features/cake/CakeView'
+
+<div>
+    <CakeView />
+</div>
